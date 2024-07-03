@@ -112,7 +112,6 @@ function parseHTML(html) { //html最开始肯定是一个<div>
             }
         }
     }
-    console.log(root);
 }
 
 export function compileToFunction(template) {
