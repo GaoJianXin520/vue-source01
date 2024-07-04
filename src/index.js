@@ -5,5 +5,6 @@ function Vue(options) {
 }
 
 initMixin(Vue);
+initLicycle(Vue);
 
 export default Vue;
