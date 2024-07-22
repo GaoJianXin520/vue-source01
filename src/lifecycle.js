@@ -1,4 +1,5 @@
 import { createElementVNode, createTextVNode } from './vdom';
+import Watcher from './observe/watcher';
 
 function createElm(vnode) {
     let { tag, data, children, text } = vnode;
@@ -36,6 +37,7 @@ function patch(oldVNode, vnode) {
         let newElm = createElm(vnode);
         parentElm.insertBefore(newElm, elm.nextSibling);
         parentElm.removeChild(elm); //删除老节点
+        return newElm;
     } else {
         //diff算法
     }
@@ -47,7 +49,7 @@ export function initLicycle(Vue) {
         const el = vm.$el;
 
         //patch既有初始化的功能 又有更新
-        patch(el, vnode);
+        vm.$el = patch(el, vnode);
     }
 
     Vue.prototype._c = function() {
@@ -72,7 +74,12 @@ export function initLicycle(Vue) {
 export function mountComponent(vm, el) {
     vm.$el = el;
     //1.调用render方法产生虚拟节点 虚拟DOM
-    vm._update(vm._render());
+
+    const updateComponent = () => {
+        vm._update(vm._render()); //vm.$options.render() 虚拟节点
+    }
+
+    new Watcher(vm, updateComponent, true); //true用于标识是一个渲染watcher
 
     //2.根据虚拟DOM产生真实DOM
 
