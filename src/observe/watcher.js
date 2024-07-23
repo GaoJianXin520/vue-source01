@@ -33,7 +33,75 @@ class Watcher { //不同组件有不同的watcher 目前只有一个 渲染根�
     }
 
     update() { //当属性发生变化的时候 会调用这个方法
-        this.get(); //重新渲染
+        queueWatcher(this); //将当前的watcher放到队列中，异步更新
+        // this.get(); //重新渲染
+    }
+
+    run() { //执行watcher的run方法
+        this.get();
+    }
+}
+
+let queue = []; //存放watcher的数组
+let has = {}; //存放watcher的id
+let pending = false; //标识队列是否已经处于等待状态
+
+function flushSchedulerQueue() { //将队列中的watcher全部执行
+    let flushQueue = queue.slice(0);
+    queue = [];
+    has = {};
+    flushQueue.forEach(q => q.run()); //执行watcher的run方法
+    pending = false;
+}
+
+function queueWatcher(watcher) { //将watcher放到队列中
+    const id = watcher.id; //每个watcher都有一个唯一的id
+    if (!has[id]) { //如果队列中没有这个watcher
+        queue.push(watcher); //将watcher放到队列中
+        has[id] = true; //标识这个watcher已经放到队列中
+        if (!pending) { //如果队列没有处于等待状态
+            nextTick(flushSchedulerQueue, 0); //将队列中的watcher全部执行
+            pending = true; //标识队列已经处于等待状态
+        }
+    }
+}
+
+
+let callbacks = [];
+let waiting = false;
+function flushCallbacks() { 
+    let cbs = callbacks.slice(0);
+    waiting = true;
+    callbacks = [];
+    cbs.forEach(cb => cb());
+}
+
+//nextTick没有直接使用某个api，二十采用优雅降级的方式
+//内部先采用的是promise（ie不兼容） MutationObserver（h5的api）可以考虑ie专享的setImmediate（ie10） setTimeout
+
+let timerFunc; //异步方法
+if (Promise) {
+    timerFunc = () => {
+        Promise.resolve().then(flushCallbacks);
+    }
+} else if (MutationObserver) {
+    let observer = new MutationObserver(flushCallbacks);
+    let textNode = document.createTextNode(1);
+    observer.observe(textNode, {
+        characterData: true
+    });
+    timerFunc = () => textNode.textContent = 2;
+} else if (setImmediate) {
+    timerFunc = () => setImmediate(flushCallbacks);
+} else { 
+    timerFunc = () => setTimeout(flushCallbacks, 0);
+}
+
+export function nextTick(cb) {
+    callbacks.push(cb);
+    if (!waiting) { //如果还没有处于等待状态
+        timerFunc(); //将flushCallbacks放到异步队列中
+        waiting = true;
     }
 }
 
